@@ -56,9 +56,9 @@ class HomePage extends StatelessWidget {
         elevation: 0,
       ),
       body: Container(
-        decoration: BoxDecoration(
+        decoration: const BoxDecoration(
           gradient: LinearGradient(
-            colors: [Colors.white, const Color(0xFFEEF2FF)], // Very subtle blue tint
+            colors: [Colors.white, Color(0xFFEEF2FF)], // Very subtle blue tint
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
           ),
@@ -93,52 +93,29 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
 
   void _uploadFile() async {
     if (_filePath.isNotEmpty) {
-      Navigator.push(
+      // Navigate to loading page and wait for the result
+      final result = await Navigator.push<Map<String, dynamic>>(
         context,
-        MaterialPageRoute(builder: (context) => const LoadingPage()),
+        MaterialPageRoute(
+          builder: (context) => LoadingPage(filePath: _filePath),
+        ),
       );
 
-      var request = http.MultipartRequest(
-        'POST',
-        Uri.parse("http://10.0.2.2:8000/upload"),
-      );
-
-      request.files.add(
-        await http.MultipartFile.fromPath('file', _filePath),
-      );
-
-      try {
-        var response = await request.send();
-
-        if (response.statusCode == 200) {
-          Map<String, dynamic> jsonResponse =
-              json.decode(await response.stream.bytesToString());
-
-          if (jsonResponse.containsKey('error')) {
-            _showErrorSnackBar('Server error: ${jsonResponse['error']}');
-          } else {
-            var analysisResult = jsonResponse['result'];
-
-            if (analysisResult != null) {
-              setState(() {
-                _analysisResult = analysisResult;
-              });
-
-              Navigator.pushReplacement(
-                context,
-                MaterialPageRoute(
-                  builder: (context) => ResultPage(_analysisResult),
-                ),
-              );
-            }
-          }
+      if (result != null) {
+        if (result.containsKey('error')) {
+          _showErrorSnackBar(result['error']);
         } else {
-          Navigator.pop(context); 
-          _showErrorSnackBar('Upload failed. Try again.');
+          setState(() {
+            _analysisResult = result['result'];
+          });
+
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder: (context) => ResultPage(_analysisResult),
+            ),
+          );
         }
-      } catch (e) {
-        Navigator.pop(context);
-        _showErrorSnackBar('Connection error. Is the server running?');
       }
     } else {
       _showErrorSnackBar('Select a file to begin.');
@@ -408,7 +385,8 @@ class ResultPage extends StatelessWidget {
 }
 
 class LoadingPage extends StatefulWidget {
-  const LoadingPage({super.key});
+  final String filePath;
+  const LoadingPage({super.key, required this.filePath});
 
   @override
   _LoadingPageState createState() => _LoadingPageState();
@@ -416,17 +394,56 @@ class LoadingPage extends StatefulWidget {
 
 class _LoadingPageState extends State<LoadingPage> {
   double _progress = 0.0;
+  bool _isFinished = false;
 
   @override
   void initState() {
     super.initState();
-    _simulateLoading();
+    _startAnalysis();
   }
 
-  Future<void> _simulateLoading() async {
-    for (int i = 0; i < 100; i++) {
-      await Future.delayed(const Duration(milliseconds: 15));
+  void _startAnalysis() async {
+    // 1. Start the actual upload
+    var uploadFuture = _performUpload();
+    
+    // 2. Start the animation (fast to 90%)
+    for (int i = 0; i < 90; i++) {
+      if (_isFinished) break;
+      await Future.delayed(const Duration(milliseconds: 10));
       if (mounted) setState(() => _progress = (i + 1) / 100);
+    }
+
+    // 3. Wait for the server result
+    final result = await uploadFuture;
+
+    // 4. Quickly finish to 100% and exit
+    _isFinished = true;
+    if (mounted) setState(() => _progress = 1.0);
+    await Future.delayed(const Duration(milliseconds: 200));
+    
+    if (mounted) Navigator.pop(context, result);
+  }
+
+  Future<Map<String, dynamic>> _performUpload() async {
+    try {
+      var request = http.MultipartRequest(
+        'POST',
+        Uri.parse("http://10.0.2.2:8000/upload"),
+      );
+
+      request.files.add(
+        await http.MultipartFile.fromPath('file', widget.filePath),
+      );
+
+      var response = await request.send();
+
+      if (response.statusCode == 200) {
+        return json.decode(await response.stream.bytesToString());
+      } else {
+        return {'error': 'Upload failed (Status: ${response.statusCode})'};
+      }
+    } catch (e) {
+      return {'error': 'Network error. Is the server running?'};
     }
   }
 
@@ -445,20 +462,29 @@ class _LoadingPageState extends State<LoadingPage> {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Container(
-              padding: const EdgeInsets.all(30),
-              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
-              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 150,
+                  height: 150,
+                  child: CircularProgressIndicator(
+                    value: _progress,
+                    strokeWidth: 4,
+                    color: Colors.white,
+                    backgroundColor: Colors.white.withOpacity(0.2),
+                  ),
+                ),
+                Text(
+                  '${(_progress * 100).toInt()}%',
+                  style: const TextStyle(fontSize: 32, fontWeight: FontWeight.w900, color: Colors.white),
+                ),
+              ],
             ),
             const SizedBox(height: 40),
-            Text(
-              '${(_progress * 100).toInt()}%',
-              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Colors.white),
-            ),
-            const SizedBox(height: 10),
             const Text(
               'DECODING EMOTIONS...',
-              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, letterSpacing: 2),
+              style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold, letterSpacing: 3),
             ),
           ],
         ),
