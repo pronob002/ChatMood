@@ -15,12 +15,15 @@ class MyApp extends StatelessWidget {
       theme: ThemeData(
         useMaterial3: true,
         colorScheme: ColorScheme.fromSeed(
-          seedColor: Colors.deepPurple,
+          seedColor: const Color(0xFF6366F1), // Vibrant Indigo
+          primary: const Color(0xFF6366F1),
+          secondary: const Color(0xFF06B6D4), // Vibrant Cyan
+          surface: Colors.white,
           brightness: Brightness.light,
         ),
         textTheme: const TextTheme(
-          headlineMedium: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
-          titleLarge: TextStyle(fontWeight: FontWeight.w600),
+          headlineMedium: TextStyle(fontWeight: FontWeight.w800, color: Color(0xFF1E1B4B)),
+          titleLarge: TextStyle(fontWeight: FontWeight.bold, letterSpacing: 0.5),
         ),
       ),
       home: const HomePage(),
@@ -34,26 +37,31 @@ class HomePage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      extendBodyBehindAppBar: false,
       appBar: AppBar(
         title: const Text(
-          'ChatMood Analytics',
-          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+          'ChatMood AI',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.w900, letterSpacing: 1.2),
         ),
         centerTitle: true,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
             gradient: LinearGradient(
-              colors: [Colors.deepPurple, Colors.purpleAccent],
+              colors: [Color(0xFF4F46E5), Color(0xFF9333EA)], // Indigo to Purple
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
             ),
           ),
         ),
-        elevation: 4,
+        elevation: 0,
       ),
       body: Container(
         decoration: BoxDecoration(
-          color: Colors.grey.shade50,
+          gradient: LinearGradient(
+            colors: [Colors.white, const Color(0xFFEEF2FF)], // Very subtle blue tint
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+          ),
         ),
         child: Center(child: FileUploadWidget()),
       ),
@@ -125,21 +133,26 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
             }
           }
         } else {
-          Navigator.pop(context); // Close loading
-          _showErrorSnackBar('Upload failed (Status: ${response.statusCode})');
+          Navigator.pop(context); 
+          _showErrorSnackBar('Upload failed. Try again.');
         }
       } catch (e) {
-        Navigator.pop(context); // Close loading
-        _showErrorSnackBar('Error: Make sure backend is running.');
+        Navigator.pop(context);
+        _showErrorSnackBar('Connection error. Is the server running?');
       }
     } else {
-      _showErrorSnackBar('Please select a file first.');
+      _showErrorSnackBar('Select a file to begin.');
     }
   }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+      SnackBar(
+        content: Text(message, style: const TextStyle(fontWeight: FontWeight.bold)),
+        backgroundColor: const Color(0xFFEF4444), // Vibrant Red
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
     );
   }
 
@@ -148,73 +161,85 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
     String fileName = _filePath.isNotEmpty ? _filePath.split('/').last : '';
 
     return Padding(
-      padding: const EdgeInsets.all(24.0),
-      child: Card(
-        elevation: 8,
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        child: Padding(
-          padding: const EdgeInsets.all(32.0),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Icon(Icons.cloud_upload_outlined, size: 80, color: Colors.deepPurple.shade300),
-              const SizedBox(height: 16),
-              Text('Upload Chat Log', style: Theme.of(context).textTheme.headlineSmall),
-              const SizedBox(height: 8),
-              const Text(
-                'Select a .txt file to analyze the mood of your conversation.',
-                textAlign: TextAlign.center,
-                style: TextStyle(color: Colors.grey),
-              ),
-              const SizedBox(height: 32),
-              OutlinedButton.icon(
-                onPressed: _openFileExplorer,
-                icon: const Icon(Icons.file_open),
-                label: const Text('Select Text File'),
-                style: OutlinedButton.styleFrom(
-                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                ),
-              ),
-              if (_filePath.isNotEmpty) ...[
-                const SizedBox(height: 16),
-                Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    color: Colors.deepPurple.shade50,
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                  child: Row(
-                    children: [
-                      const Icon(Icons.description, color: Colors.deepPurple),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
-                          fileName,
-                          style: const TextStyle(fontWeight: FontWeight.bold),
-                          overflow: TextOverflow.ellipsis,
-                        ),
-                      ),
-                    ],
-                  ),
+      padding: const EdgeInsets.all(20.0),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            padding: const EdgeInsets.all(40),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(30),
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF6366F1).withOpacity(0.15),
+                  blurRadius: 30,
+                  offset: const Offset(0, 10),
                 ),
               ],
-              const SizedBox(height: 32),
-              ElevatedButton.icon(
-                onPressed: _uploadFile,
-                icon: const Icon(Icons.analytics),
-                label: const Text('Analyze Mood'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.deepPurple,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                  elevation: 4,
+            ),
+            child: Column(
+              children: [
+                ShaderMask(
+                  shaderCallback: (bounds) => const LinearGradient(
+                    colors: [Color(0xFF4F46E5), Color(0xFF06B6D4)],
+                  ).createShader(bounds),
+                  child: const Icon(Icons.auto_awesome, size: 80, color: Colors.white),
                 ),
-              ),
-            ],
+                const SizedBox(height: 24),
+                const Text(
+                  'Smart Mood Analysis',
+                  style: TextStyle(fontSize: 24, fontWeight: FontWeight.w900, color: Color(0xFF1E1B4B)),
+                ),
+                const SizedBox(height: 12),
+                const Text(
+                  'Upload your chat history and let AI reveal the hidden emotions.',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(color: Color(0xFF64748B), fontSize: 15),
+                ),
+                const SizedBox(height: 40),
+                GestureDetector(
+                  onTap: _openFileExplorer,
+                  child: Container(
+                    width: double.infinity,
+                    padding: const EdgeInsets.symmetric(vertical: 20),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFFF8FAFC),
+                      borderRadius: BorderRadius.circular(15),
+                      border: Border.all(color: const Color(0xFFE2E8F0), width: 2),
+                    ),
+                    child: Column(
+                      children: [
+                        const Icon(Icons.file_upload_outlined, color: Color(0xFF6366F1)),
+                        const SizedBox(height: 8),
+                        Text(
+                          _filePath.isEmpty ? 'Tap to choose .txt file' : fileName,
+                          style: TextStyle(
+                            color: _filePath.isEmpty ? const Color(0xFF94A3B8) : const Color(0xFF6366F1),
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 30),
+                ElevatedButton(
+                  onPressed: _uploadFile,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: const Color(0xFF6366F1),
+                    foregroundColor: Colors.white,
+                    minimumSize: const Size(double.infinity, 60),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+                    elevation: 5,
+                    shadowColor: const Color(0xFF6366F1).withOpacity(0.5),
+                  ),
+                  child: const Text('ANALYZE NOW', style: TextStyle(fontWeight: FontWeight.w900, fontSize: 16, letterSpacing: 1.5)),
+                ),
+              ],
+            ),
           ),
-        ),
+        ],
       ),
     );
   }
@@ -228,24 +253,26 @@ class ResultPage extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: const Color(0xFFF8FAFC),
       appBar: AppBar(
-        title: const Text('Analysis Insights', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        title: const Text('Analysis Report', style: TextStyle(fontWeight: FontWeight.w900, color: Colors.white)),
         centerTitle: true,
         flexibleSpace: Container(
           decoration: const BoxDecoration(
-            gradient: LinearGradient(colors: [Colors.deepPurple, Colors.purpleAccent]),
+            gradient: LinearGradient(colors: [Color(0xFF4F46E5), Color(0xFF9333EA)]),
           ),
         ),
       ),
       body: ListView(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(20),
         children: [
           _buildSummaryCard(),
-          const SizedBox(height: 24),
-          const Padding(
-            padding: EdgeInsets.only(left: 8.0, bottom: 8.0),
-            child: Text('Author Breakdown', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+          const SizedBox(height: 30),
+          const Text(
+            'Individual Breakdown',
+            style: TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF1E1B4B)),
           ),
+          const SizedBox(height: 15),
           if (analysisResult != null && analysisResult!.containsKey('percentage_by_author'))
             ...analysisResult!['percentage_by_author'].keys.map((author) {
               return _buildAuthorCard(author, context);
@@ -256,30 +283,32 @@ class ResultPage extends StatelessWidget {
   }
 
   Widget _buildSummaryCard() {
-    return Card(
-      elevation: 4,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceAround,
-          children: [
-            _buildStatItem('Authors', analysisResult!['total_authors'].toString(), Icons.people),
-            Container(width: 1, height: 40, color: Colors.grey.shade300),
-            _buildStatItem('Messages', analysisResult!['total_messages'].toString(), Icons.message),
-          ],
-        ),
+    return Container(
+      padding: const EdgeInsets.all(25),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E1B4B), // Deep Navy
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(color: const Color(0xFF1E1B4B).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10)),
+        ],
+      ),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: [
+          _buildStatItem('Authors', analysisResult!['total_authors'].toString(), Icons.people_alt, const Color(0xFF818CF8)),
+          _buildStatItem('Messages', analysisResult!['total_messages'].toString(), Icons.forum, const Color(0xFF2DD4BF)),
+        ],
       ),
     );
   }
 
-  Widget _buildStatItem(String label, String value, IconData icon) {
+  Widget _buildStatItem(String label, String value, IconData icon, Color accentColor) {
     return Column(
       children: [
-        Icon(icon, color: Colors.deepPurple),
-        const SizedBox(height: 4),
-        Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-        Text(label, style: const TextStyle(color: Colors.grey)),
+        Icon(icon, color: accentColor, size: 30),
+        const SizedBox(height: 10),
+        Text(value, style: const TextStyle(fontSize: 28, fontWeight: FontWeight.w900, color: Colors.white)),
+        Text(label, style: const TextStyle(color: Color(0xFF94A3B8), fontWeight: FontWeight.w600)),
       ],
     );
   }
@@ -287,50 +316,51 @@ class ResultPage extends StatelessWidget {
   Widget _buildAuthorCard(String author, BuildContext context) {
     int messageCount = analysisResult!['messages_by_author'][author] ?? 0;
 
-    return Card(
-      margin: const EdgeInsets.only(bottom: 16),
-      elevation: 2,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
-      child: Padding(
-        padding: const EdgeInsets.all(16.0),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(author, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.deepPurple)),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(color: Colors.deepPurple.shade50, borderRadius: BorderRadius.circular(20)),
-                  child: Text('$messageCount messages', style: const TextStyle(fontSize: 12, color: Colors.deepPurple)),
-                ),
-              ],
-            ),
-            const Divider(height: 32),
-            AspectRatio(
-              aspectRatio: 1.7,
-              child: PieChart(
-                PieChartData(
-                  sections: _buildPieChartSections(author),
-                  centerSpaceRadius: 40,
-                  sectionsSpace: 2,
-                ),
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        boxShadow: [
+          BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 5)),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(author, style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF4F46E5))),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(color: const Color(0xFFEEF2FF), borderRadius: BorderRadius.circular(12)),
+                child: Text('$messageCount msgs', style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w800, color: Color(0xFF4F46E5))),
+              ),
+            ],
+          ),
+          const SizedBox(height: 25),
+          AspectRatio(
+            aspectRatio: 1.8,
+            child: PieChart(
+              PieChartData(
+                sections: _buildPieChartSections(author),
+                centerSpaceRadius: 35,
+                sectionsSpace: 4,
               ),
             ),
-            const SizedBox(height: 16),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                _buildLegendItem('Positive', Colors.green),
-                const SizedBox(width: 16),
-                _buildLegendItem('Negative', Colors.red),
-                const SizedBox(width: 16),
-                _buildLegendItem('Neutral', Colors.blue),
-              ],
-            )
-          ],
-        ),
+          ),
+          const SizedBox(height: 25),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceAround,
+            children: [
+              _buildLegendItem('Positive', const Color(0xFF10B981)), // Emerald
+              _buildLegendItem('Negative', const Color(0xFFF43F5E)), // Rose
+              _buildLegendItem('Neutral', const Color(0xFF3B82F6)),  // Blue
+            ],
+          )
+        ],
       ),
     );
   }
@@ -338,9 +368,9 @@ class ResultPage extends StatelessWidget {
   Widget _buildLegendItem(String label, Color color) {
     return Row(
       children: [
-        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
-        const SizedBox(width: 4),
-        Text(label, style: const TextStyle(fontSize: 12)),
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, borderRadius: BorderRadius.circular(4))),
+        const SizedBox(width: 6),
+        Text(label, style: const TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: Color(0xFF64748B))),
       ],
     );
   }
@@ -353,25 +383,25 @@ class ResultPage extends StatelessWidget {
 
     return [
       PieChartSectionData(
-        color: Colors.green,
+        color: const Color(0xFF10B981),
         value: pos,
         title: '${pos.toStringAsFixed(0)}%',
         radius: 50,
-        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
       ),
       PieChartSectionData(
-        color: Colors.red,
+        color: const Color(0xFFF43F5E),
         value: neg,
         title: '${neg.toStringAsFixed(0)}%',
         radius: 50,
-        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
       ),
       PieChartSectionData(
-        color: Colors.blue,
+        color: const Color(0xFF3B82F6),
         value: neu,
         title: '${neu.toStringAsFixed(0)}%',
         radius: 50,
-        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
+        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.w900, color: Colors.white),
       ),
     ];
   }
@@ -394,48 +424,42 @@ class _LoadingPageState extends State<LoadingPage> {
   }
 
   Future<void> _simulateLoading() async {
-    // Reduced the total time significantly (from 50s to ~2s)
     for (int i = 0; i < 100; i++) {
-      await Future.delayed(const Duration(milliseconds: 20));
-      if (mounted) {
-        setState(() {
-          _progress = (i + 1) / 100;
-        });
-      }
+      await Future.delayed(const Duration(milliseconds: 15));
+      if (mounted) setState(() => _progress = (i + 1) / 100);
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white,
-      body: Center(
+      body: Container(
+        width: double.infinity,
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            colors: [Color(0xFF4F46E5), Color(0xFF9333EA)],
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+          ),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Stack(
-              alignment: Alignment.center,
-              children: [
-                SizedBox(
-                  width: 120,
-                  height: 120,
-                  child: CircularProgressIndicator(
-                    value: _progress,
-                    strokeWidth: 8,
-                    backgroundColor: Colors.grey.shade200,
-                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.deepPurpleAccent),
-                  ),
-                ),
-                Text('${(_progress * 100).toInt()}%', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
-              ],
+            Container(
+              padding: const EdgeInsets.all(30),
+              decoration: BoxDecoration(color: Colors.white.withOpacity(0.1), shape: BoxShape.circle),
+              child: const CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
             ),
             const SizedBox(height: 40),
-            const Text(
-              'Analyzing Your Conversation...',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.deepPurple),
+            Text(
+              '${(_progress * 100).toInt()}%',
+              style: const TextStyle(fontSize: 40, fontWeight: FontWeight.w900, color: Colors.white),
             ),
-            const SizedBox(height: 8),
-            const Text('Processing sentiments and authors...', style: TextStyle(color: Colors.grey)),
+            const SizedBox(height: 10),
+            const Text(
+              'DECODING EMOTIONS...',
+              style: TextStyle(color: Colors.white70, fontWeight: FontWeight.bold, letterSpacing: 2),
+            ),
           ],
         ),
       ),
