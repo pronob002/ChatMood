@@ -11,38 +11,51 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: Scaffold(
-        appBar: AppBar(
-          title: Text(
-            'Sentiment Analysis',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              fontFamily: 'Roboto',
+      title: 'ChatMood',
+      theme: ThemeData(
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: Colors.deepPurple,
+          brightness: Brightness.light,
+        ),
+        textTheme: const TextTheme(
+          headlineMedium: TextStyle(fontWeight: FontWeight.bold, color: Colors.deepPurple),
+          titleLarge: TextStyle(fontWeight: FontWeight.w600),
+        ),
+      ),
+      home: const HomePage(),
+    );
+  }
+}
+
+class HomePage extends StatelessWidget {
+  const HomePage({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return Scaffold(
+      appBar: AppBar(
+        title: const Text(
+          'ChatMood Analytics',
+          style: TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+        ),
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(
+              colors: [Colors.deepPurple, Colors.purpleAccent],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
             ),
           ),
-          centerTitle: true,
-          elevation: 5,
         ),
-        body: Center(child: FileUploadWidget()),
-        backgroundColor: Colors.grey.shade200,
+        elevation: 4,
       ),
-      theme: ThemeData(
-        primaryColor: Colors.deepPurpleAccent,
-        hintColor: Colors.amberAccent,
-        scaffoldBackgroundColor: Colors.grey.shade200,
-        appBarTheme: AppBarTheme(
-          backgroundColor: Colors.deepPurpleAccent,
+      body: Container(
+        decoration: BoxDecoration(
+          color: Colors.grey.shade50,
         ),
-        elevatedButtonTheme: ElevatedButtonThemeData(
-          style: ElevatedButton.styleFrom(
-            primary: Colors.deepPurpleAccent,
-            onPrimary: Colors.white,
-            elevation: 3,
-            shadowColor: Colors.deepPurple,
-          ),
-        ),
+        child: Center(child: FileUploadWidget()),
       ),
     );
   }
@@ -54,7 +67,7 @@ class FileUploadWidget extends StatefulWidget {
 }
 
 class _FileUploadWidgetState extends State<FileUploadWidget> {
-  late String _filePath = '';
+  String _filePath = '';
   Map<String, dynamic>? _analysisResult;
 
   void _openFileExplorer() async {
@@ -72,12 +85,9 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
 
   void _uploadFile() async {
     if (_filePath.isNotEmpty) {
-      // Show loading page
       Navigator.push(
         context,
-        MaterialPageRoute(
-          builder: (context) => LoadingPage(),
-        ),
+        MaterialPageRoute(builder: (context) => const LoadingPage()),
       );
 
       var request = http.MultipartRequest(
@@ -86,10 +96,7 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
       );
 
       request.files.add(
-        await http.MultipartFile.fromPath(
-          'file',
-          _filePath,
-        ),
+        await http.MultipartFile.fromPath('file', _filePath),
       );
 
       try {
@@ -97,10 +104,10 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
 
         if (response.statusCode == 200) {
           Map<String, dynamic> jsonResponse =
-          json.decode(await response.stream.bytesToString());
+              json.decode(await response.stream.bytesToString());
 
           if (jsonResponse.containsKey('error')) {
-            print('Server error: ${jsonResponse['error']}');
+            _showErrorSnackBar('Server error: ${jsonResponse['error']}');
           } else {
             var analysisResult = jsonResponse['result'];
 
@@ -109,67 +116,106 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
                 _analysisResult = analysisResult;
               });
 
-              Navigator.push(
+              Navigator.pushReplacement(
                 context,
                 MaterialPageRoute(
                   builder: (context) => ResultPage(_analysisResult),
                 ),
               );
-            } else {
-              print('Analysis result is null');
             }
           }
         } else {
-          print('Failed to upload file. Status code: ${response.statusCode}');
-          print('Response body: ${await response.stream.bytesToString()}');
+          Navigator.pop(context); // Close loading
+          _showErrorSnackBar('Upload failed (Status: ${response.statusCode})');
         }
       } catch (e) {
-        print('Error uploading file: $e');
+        Navigator.pop(context); // Close loading
+        _showErrorSnackBar('Error: Make sure backend is running.');
       }
     } else {
-      print('No file selected for upload');
+      _showErrorSnackBar('Please select a file first.');
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text(message), backgroundColor: Colors.redAccent),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
     String fileName = _filePath.isNotEmpty ? _filePath.split('/').last : '';
 
-    return Column(
-      mainAxisAlignment: MainAxisAlignment.center,
-      children: [
-        ElevatedButton(
-          onPressed: _openFileExplorer,
-          child: Text(
-            'Select Text File',
-            style: TextStyle(
-              fontSize: 20,
-              fontFamily: 'Roboto',
-            ),
+    return Padding(
+      padding: const EdgeInsets.all(24.0),
+      child: Card(
+        elevation: 8,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(32.0),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.cloud_upload_outlined, size: 80, color: Colors.deepPurple.shade300),
+              const SizedBox(height: 16),
+              Text('Upload Chat Log', style: Theme.of(context).textTheme.headlineSmall),
+              const SizedBox(height: 8),
+              const Text(
+                'Select a .txt file to analyze the mood of your conversation.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: Colors.grey),
+              ),
+              const SizedBox(height: 32),
+              OutlinedButton.icon(
+                onPressed: _openFileExplorer,
+                icon: const Icon(Icons.file_open),
+                label: const Text('Select Text File'),
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                ),
+              ),
+              if (_filePath.isNotEmpty) ...[
+                const SizedBox(height: 16),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: Colors.deepPurple.shade50,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Row(
+                    children: [
+                      const Icon(Icons.description, color: Colors.deepPurple),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Text(
+                          fileName,
+                          style: const TextStyle(fontWeight: FontWeight.bold),
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+              const SizedBox(height: 32),
+              ElevatedButton.icon(
+                onPressed: _uploadFile,
+                icon: const Icon(Icons.analytics),
+                label: const Text('Analyze Mood'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.deepPurple,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 15),
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                  elevation: 4,
+                ),
+              ),
+            ],
           ),
         ),
-        SizedBox(height: 20),
-        if (_filePath.isNotEmpty)
-          Text(
-            'File Selected: $fileName',
-            style: TextStyle(
-              color: Colors.deepPurpleAccent,
-              fontSize: 18,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-        SizedBox(height: 20),
-        ElevatedButton(
-          onPressed: _uploadFile,
-          child: Text(
-            'Upload File',
-            style: TextStyle(
-              fontSize: 20,
-              fontFamily: 'Roboto',
-            ),
-          ),
-        ),
-      ],
+      ),
     );
   }
 }
@@ -177,133 +223,163 @@ class _FileUploadWidgetState extends State<FileUploadWidget> {
 class ResultPage extends StatelessWidget {
   final Map<String, dynamic>? analysisResult;
 
-  ResultPage(this.analysisResult);
+  const ResultPage(this.analysisResult, {super.key});
 
   @override
   Widget build(BuildContext context) {
-    print(analysisResult);
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: Text(
-          'Analysis Result',
-          style: TextStyle(
-            fontSize: 24,
-            fontWeight: FontWeight.bold,
-            fontFamily: 'Roboto',
+        title: const Text('Analysis Insights', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
+        centerTitle: true,
+        flexibleSpace: Container(
+          decoration: const BoxDecoration(
+            gradient: LinearGradient(colors: [Colors.deepPurple, Colors.purpleAccent]),
           ),
         ),
-        centerTitle: true,
-        elevation: 5,
       ),
       body: ListView(
-        padding: EdgeInsets.all(16),
+        padding: const EdgeInsets.all(16),
         children: [
-          Center(
-            child: Text(
-              'Total Authors: ${analysisResult!['total_authors']}',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
+          _buildSummaryCard(),
+          const SizedBox(height: 24),
+          const Padding(
+            padding: EdgeInsets.only(left: 8.0, bottom: 8.0),
+            child: Text('Author Breakdown', style: TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
           ),
-          Center(
-            child: Text(
-              'Total Messages: ${analysisResult!['total_messages']}',
-              style: TextStyle(fontSize: 22, fontWeight: FontWeight.bold),
-            ),
-          ),
-          if (analysisResult != null &&
-              analysisResult!.containsKey('total_authors') &&
-              analysisResult!.containsKey('percentage_by_author'))
+          if (analysisResult != null && analysisResult!.containsKey('percentage_by_author'))
             ...analysisResult!['percentage_by_author'].keys.map((author) {
-              return Column(
-                children: [
-                  Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Text(
-                      'Sentiment Analysis for $author',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-                  AspectRatio(
-                    aspectRatio: 1.5,
-                    child: PieChart(
-                      PieChartData(
-                        sections: _buildPieChartSections(author),
-                        borderData: FlBorderData(show: false),
-                        centerSpaceRadius: 40,
-                        sectionsSpace: 0,
-                      ),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  // Display number of messages by each author
-                  Center(
-                    child: Text(
-                      'Messages by $author: ${analysisResult!['messages_by_author'][author]}',
-                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
-                    ),
-                  ),
-                  SizedBox(height: 20),
-                  Divider(
-                    color: Colors.black,
-                    thickness: 2,
-                  ),
-                ],
-              );
+              return _buildAuthorCard(author, context);
             }).toList(),
-          SizedBox(height: 20),
         ],
       ),
     );
   }
 
+  Widget _buildSummaryCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: const EdgeInsets.all(20.0),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.spaceAround,
+          children: [
+            _buildStatItem('Authors', analysisResult!['total_authors'].toString(), Icons.people),
+            Container(width: 1, height: 40, color: Colors.grey.shade300),
+            _buildStatItem('Messages', analysisResult!['total_messages'].toString(), Icons.message),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStatItem(String label, String value, IconData icon) {
+    return Column(
+      children: [
+        Icon(icon, color: Colors.deepPurple),
+        const SizedBox(height: 4),
+        Text(value, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+        Text(label, style: const TextStyle(color: Colors.grey)),
+      ],
+    );
+  }
+
+  Widget _buildAuthorCard(String author, BuildContext context) {
+    int messageCount = analysisResult!['messages_by_author'][author] ?? 0;
+
+    return Card(
+      margin: const EdgeInsets.only(bottom: 16),
+      elevation: 2,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(15)),
+      child: Padding(
+        padding: const EdgeInsets.all(16.0),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(author, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: Colors.deepPurple)),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(color: Colors.deepPurple.shade50, borderRadius: BorderRadius.circular(20)),
+                  child: Text('$messageCount messages', style: const TextStyle(fontSize: 12, color: Colors.deepPurple)),
+                ),
+              ],
+            ),
+            const Divider(height: 32),
+            AspectRatio(
+              aspectRatio: 1.7,
+              child: PieChart(
+                PieChartData(
+                  sections: _buildPieChartSections(author),
+                  centerSpaceRadius: 40,
+                  sectionsSpace: 2,
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                _buildLegendItem('Positive', Colors.green),
+                const SizedBox(width: 16),
+                _buildLegendItem('Negative', Colors.red),
+                const SizedBox(width: 16),
+                _buildLegendItem('Neutral', Colors.blue),
+              ],
+            )
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem(String label, Color color) {
+    return Row(
+      children: [
+        Container(width: 12, height: 12, decoration: BoxDecoration(color: color, shape: BoxShape.circle)),
+        const SizedBox(width: 4),
+        Text(label, style: const TextStyle(fontSize: 12)),
+      ],
+    );
+  }
+
   List<PieChartSectionData> _buildPieChartSections(String author) {
-    List<PieChartSectionData> sections = [];
+    var data = analysisResult!['percentage_by_author'][author];
+    double pos = (data['positive'] as num).toDouble();
+    double neg = (data['negative'] as num).toDouble();
+    double neu = (data['neutral'] as num).toDouble();
 
-    double positivePercentage =
-    analysisResult!['percentage_by_author'][author]['positive'];
-    double negativePercentage =
-    analysisResult!['percentage_by_author'][author]['negative'];
-    double neutralPercentage =
-    analysisResult!['percentage_by_author'][author]['neutral'];
-
-    sections.add(
+    return [
       PieChartSectionData(
         color: Colors.green,
-        value: positivePercentage,
-        title: 'Positive: ${positivePercentage.toStringAsFixed(2)}%',
-        radius: 80,
-        titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        value: pos,
+        title: '${pos.toStringAsFixed(0)}%',
+        radius: 50,
+        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
       ),
-    );
-
-    sections.add(
       PieChartSectionData(
         color: Colors.red,
-        value: negativePercentage,
-        title: 'Negative: ${negativePercentage.toStringAsFixed(2)}%',
-        radius: 60,
-        titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        value: neg,
+        title: '${neg.toStringAsFixed(0)}%',
+        radius: 50,
+        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
       ),
-    );
-    sections.add(
       PieChartSectionData(
         color: Colors.blue,
-        value: neutralPercentage,
-        title: 'Neutral: ${neutralPercentage.toStringAsFixed(2)}%',
-        radius: 40,
-        titleStyle: TextStyle(fontSize: 16, fontWeight: FontWeight.bold),
+        value: neu,
+        title: '${neu.toStringAsFixed(0)}%',
+        radius: 50,
+        titleStyle: const TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.white),
       ),
-    );
-
-    return sections;
+    ];
   }
 }
 
 class LoadingPage extends StatefulWidget {
+  const LoadingPage({super.key});
+
   @override
   _LoadingPageState createState() => _LoadingPageState();
 }
@@ -314,40 +390,52 @@ class _LoadingPageState extends State<LoadingPage> {
   @override
   void initState() {
     super.initState();
-    // Simulate loading progress
     _simulateLoading();
   }
 
-  // Simulate loading progress
   Future<void> _simulateLoading() async {
+    // Reduced the total time significantly (from 50s to ~2s)
     for (int i = 0; i < 100; i++) {
-      await Future.delayed(Duration(milliseconds: 500));
-      setState(() {
-        _progress = (i + 1) / 100;
-      });
+      await Future.delayed(const Duration(milliseconds: 20));
+      if (mounted) {
+        setState(() {
+          _progress = (i + 1) / 100;
+        });
+      }
     }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      backgroundColor: Colors.white,
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            CircularProgressIndicator(
-              value: _progress,
-              backgroundColor: Colors.grey.shade300,
-              valueColor: AlwaysStoppedAnimation<Color>(Colors.deepPurpleAccent),
+            Stack(
+              alignment: Alignment.center,
+              children: [
+                SizedBox(
+                  width: 120,
+                  height: 120,
+                  child: CircularProgressIndicator(
+                    value: _progress,
+                    strokeWidth: 8,
+                    backgroundColor: Colors.grey.shade200,
+                    valueColor: const AlwaysStoppedAnimation<Color>(Colors.deepPurpleAccent),
+                  ),
+                ),
+                Text('${(_progress * 100).toInt()}%', style: const TextStyle(fontSize: 20, fontWeight: FontWeight.bold)),
+              ],
             ),
-            SizedBox(height: 20),
-            Text(
-              'Analyzing...',
-              style: TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
-              ),
+            const SizedBox(height: 40),
+            const Text(
+              'Analyzing Your Conversation...',
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.w600, color: Colors.deepPurple),
             ),
+            const SizedBox(height: 8),
+            const Text('Processing sentiments and authors...', style: TextStyle(color: Colors.grey)),
           ],
         ),
       ),
